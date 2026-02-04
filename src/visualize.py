@@ -12,14 +12,10 @@ Style characteristics:
 
 import matplotlib.pyplot as plt
 import matplotlib.ticker as mticker
-import numpy as np
 
 # Dark mode color palette
 COLORS = {
     'primary': '#60A5FA',      # Bright blue
-    'secondary': '#93C5FD',    # Lighter blue
-    'positive': '#4ADE80',     # Bright green
-    'negative': '#F87171',     # Bright red
     'neutral': '#9CA3AF',      # Light gray
     'grid': '#374151',         # Dark gray grid
     'text': '#F3F4F6',         # Light text
