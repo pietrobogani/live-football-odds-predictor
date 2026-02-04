@@ -64,16 +64,6 @@ class PoissonParams:
     lambda_home: float  # Expected remaining goals for home team
     lambda_away: float  # Expected remaining goals for away team
 
-    @property
-    def total(self) -> float:
-        return self.lambda_home + self.lambda_away
-
-    @property
-    def home_share(self) -> float:
-        if self.total == 0:
-            return 0.5
-        return self.lambda_home / self.total
-
 
 # =============================================================================
 # SKELLAM DISTRIBUTION
@@ -89,17 +79,13 @@ def skellam_pmf(k: int, lambda1: float, lambda2: float) -> float:
 
     where I_n is the modified Bessel function of the first kind.
     """
-    if lambda1 <= 0 or lambda2 <= 0:
-        if lambda1 <= 0 and lambda2 <= 0:
-            return 1.0 if k == 0 else 0.0
-        elif lambda1 <= 0:
-            if k > 0:
-                return 0.0
-            return math.exp(-lambda2) * (lambda2 ** (-k)) / math.factorial(-k) if k <= 0 else 0.0
-        else:
-            if k < 0:
-                return 0.0
-            return math.exp(-lambda1) * (lambda1 ** k) / math.factorial(k) if k >= 0 else 0.0
+    # Edge cases: degenerate distributions when lambda is 0
+    if lambda1 <= 0 and lambda2 <= 0:
+        return 1.0 if k == 0 else 0.0
+    if lambda1 <= 0:
+        return poisson_dist.pmf(-k, lambda2) if k <= 0 else 0.0
+    if lambda2 <= 0:
+        return poisson_dist.pmf(k, lambda1) if k >= 0 else 0.0
 
     sqrt_prod = math.sqrt(lambda1 * lambda2)
     ratio = lambda1 / lambda2
