@@ -1,13 +1,13 @@
 """
-Polymarket-style plotting for clean, professional charts.
+Dark mode visualization for football probability charts.
 
 Style characteristics:
-- Step-style lines (price changes as discrete steps)
-- Y-axis on right side with percentages
+- Smooth probability lines
+- Y-axis with percentages
 - Minimal design with subtle gridlines
-- Blue color palette
+- Outcome-specific color palette
 - End dot marker at current value
-- Clean white background
+- Dark background
 """
 
 import matplotlib.pyplot as plt
@@ -40,7 +40,7 @@ OUTCOME_COLORS = {
 
 
 def setup_style():
-    """Configure matplotlib for dark mode Polymarket-style plots."""
+    """Configure matplotlib for dark mode plots."""
     plt.rcParams.update({
         'font.family': 'sans-serif',
         'font.sans-serif': ['Inter', 'Segoe UI', 'Arial', 'Helvetica'],
@@ -68,9 +68,9 @@ def setup_style():
     })
 
 
-def create_price_chart(ax, x, y, color=None, label=None, show_end_dot=True):
+def create_probability_line(ax, x, y, color=None, label=None, show_end_dot=True):
     """
-    Create a Polymarket-style price line on the given axes.
+    Create a probability line on the given axes.
 
     Args:
         ax: matplotlib axes
@@ -92,7 +92,7 @@ def create_price_chart(ax, x, y, color=None, label=None, show_end_dot=True):
 
 def style_axes(ax, title=None, y_range=(0, 1), show_grid=True):
     """
-    Apply Polymarket styling to axes.
+    Apply styling to axes.
 
     Args:
         ax: matplotlib axes
@@ -192,12 +192,12 @@ def add_prediction_line(ax, x, y, goal_minute=None, color=None, label='Predictio
 def create_comparison_chart(minutes, observed, predicted, goal_minute,
                             title='', outcome_type='home', figsize=(10, 4)):
     """
-    Create a single chart comparing observed vs predicted prices.
+    Create a single chart comparing observed vs predicted probabilities.
 
     Args:
         minutes: list of minute values
-        observed: list of observed prices
-        predicted: list of predicted prices
+        observed: list of observed probabilities
+        predicted: list of predicted probabilities
         goal_minute: minute when goal occurred
         title: chart title
         outcome_type: 'home', 'draw', 'away', 'over', 'under'
@@ -212,10 +212,10 @@ def create_comparison_chart(minutes, observed, predicted, goal_minute,
 
     color = OUTCOME_COLORS.get(outcome_type, COLORS['primary'])
 
-    # Observed prices
-    create_price_chart(ax, minutes, observed, color=color, label='Market')
+    # Observed probabilities
+    create_probability_line(ax, minutes, observed, color=color, label='Market')
 
-    # Predicted prices (filter None values)
+    # Model predictions (filter None values)
     valid_idx = [i for i, v in enumerate(predicted) if v is not None]
     if valid_idx:
         pred_mins = [minutes[i] for i in valid_idx]
@@ -264,10 +264,10 @@ def create_triple_chart(trajectory, goal_info, match_info, figsize=(16, 4)):
     for ax, (title, obs_key, pred_key, outcome_type) in zip(axes, panels):
         color = OUTCOME_COLORS[outcome_type]
 
-        # Observed prices
-        create_price_chart(ax, minutes, trajectory[obs_key], color=color, label='Market')
+        # Observed probabilities
+        create_probability_line(ax, minutes, trajectory[obs_key], color=color, label='Market')
 
-        # Predicted prices (green before goal, purple after)
+        # Model predictions (green before goal, purple after)
         pred_vals = trajectory[pred_key]
         valid_idx = [i for i, v in enumerate(pred_vals) if v is not None]
         if valid_idx:
@@ -327,10 +327,10 @@ def create_single_outcome_chart(trajectory, goal_info, match_info,
     # Fill area under observed line
     ax.fill_between(minutes, 0, observed, alpha=0.1, color=color)
 
-    # Observed prices
-    create_price_chart(ax, minutes, observed, color=color, label='Market Price')
+    # Observed probabilities
+    create_probability_line(ax, minutes, observed, color=color, label='Market')
 
-    # Predicted prices
+    # Model predictions
     valid_idx = [i for i, v in enumerate(predicted) if v is not None]
     if valid_idx:
         pred_mins = [minutes[i] for i in valid_idx]
