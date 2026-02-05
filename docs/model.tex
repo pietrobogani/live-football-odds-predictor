@@ -1,0 +1,270 @@
+\documentclass[11pt,a4paper]{article}
+
+\usepackage{amsmath,amssymb,amsthm}
+\usepackage{graphicx}
+\usepackage{hyperref}
+\usepackage{geometry}
+\usepackage{booktabs}
+\usepackage{float}  
+\usepackage{xcolor}
+
+\geometry{margin=2.5cm}
+
+\hypersetup{
+    colorlinks=true,
+    linkcolor=blue,
+    urlcolor=blue
+}
+
+\title{Poisson Model for Live Football Probability Prediction}
+\author{Pietro Bogani\\[2pt]
+\small \href{https://www.linkedin.com/in/your-profile}{linkedin.com/in/your-profile} \quad $\cdot$ \quad
+\href{https://github.com/your-username/live-football-odds-predictor}{GitHub Repository}}
+\date{\today}
+
+\begin{document}
+
+\maketitle
+
+\begin{abstract}
+This document presents a statistical model for predicting real-time probability changes in football matches using Poisson and Skellam distributions. The model calibrates expected goal rates from public live betting market quotes and computes how match outcome probabilities shift when goals are scored.
+\end{abstract}
+
+\tableofcontents
+\newpage
+
+%==============================================================================
+\section{Introduction}
+%==============================================================================
+
+During a live football match, the probability of each outcome (Home Win, Draw, Away Win) changes as goals are scored. This model provides a mathematical framework to predict these probability shifts using:
+
+\begin{itemize}
+    \item \textbf{Poisson distribution} for modeling goal-scoring rates
+    \item \textbf{Skellam distribution} for the difference between two Poisson variables
+    \item \textbf{Dual calibration} from live market data
+\end{itemize}
+
+%==============================================================================
+\section{Mathematical Foundation}
+%==============================================================================
+
+\subsection{Poisson Distribution for Goals}
+
+Football goals are modeled as independent Poisson processes. If a team has an expected number of remaining goals $\lambda$, the probability of scoring exactly $k$ goals is:
+
+\begin{equation}
+P(X = k) = \frac{\lambda^k e^{-\lambda}}{k!}, \quad k = 0, 1, 2, \ldots
+\end{equation}
+
+We define:
+\begin{itemize}
+    \item $\lambda_H$ = expected remaining goals for home team
+    \item $\lambda_A$ = expected remaining goals for away team
+\end{itemize}
+
+\subsection{Skellam Distribution}
+
+The difference between two independent Poisson random variables follows a \textbf{Skellam distribution}. If $X \sim \text{Poisson}(\lambda_H)$ and $Y \sim \text{Poisson}(\lambda_A)$, then:
+
+\begin{equation}
+\Delta = X - Y \sim \text{Skellam}(\lambda_H, \lambda_A)
+\end{equation}
+
+The probability mass function is:
+
+\begin{equation}
+P(\Delta = k) = e^{-(\lambda_H + \lambda_A)} \left(\frac{\lambda_H}{\lambda_A}\right)^{k/2} I_{|k|}(2\sqrt{\lambda_H \lambda_A})
+\end{equation}
+
+where $I_n(x)$ is the modified Bessel function of the first kind.
+
+\subsection{Match Outcome Probabilities}
+
+Let $d$ be the current goal difference (home goals $-$ away goals). The final goal difference will be $d + \Delta$ where $\Delta$ is the Skellam-distributed remaining goal difference.
+
+\begin{align}
+P(\text{Home Win}) &= P(d + \Delta > 0) = \sum_{k > -d} P(\Delta = k) \\
+P(\text{Draw}) &= P(d + \Delta = 0) = P(\Delta = -d) \\
+P(\text{Away Win}) &= P(d + \Delta < 0) = \sum_{k < -d} P(\Delta = k)
+\end{align}
+
+%==============================================================================
+\section{Calibration from Market Data}
+%==============================================================================
+
+\subsection{The Calibration Problem}
+
+Given observed market probabilities, we need to find $\lambda_H$ and $\lambda_A$. This is an inverse problem: we observe the output (probabilities) and must infer the inputs (Poisson parameters).
+
+\subsection{Dual Calibration Method}
+
+Using only 1X2 (match winner) prices leaves the problem underdetermined---many combinations of $(\lambda_H, \lambda_A)$ can produce similar 1X2 probabilities. For example, $(\lambda_H, \lambda_A) = (2, 1)$ and $(4, 2)$ yield a similar home-win edge (both have $\lambda_H / \lambda_A \approx 2$), but the second pair implies far more total goals. The Over/Under market distinguishes between these cases. We solve this using \textbf{dual calibration}:
+
+\subsubsection{Step 1: Total Goals from Over/Under Markets}
+
+Define:
+\begin{itemize}
+    \item $m = \lambda_H + \lambda_A$ (total expected remaining goals)
+    \item $g$ = current total goals scored in the match
+    \item $n.5$ = the Over/Under line (e.g., 2.5)
+\end{itemize}
+
+The sum of two independent Poisson variables is also Poisson:
+\begin{equation}
+X + Y \sim \text{Poisson}(m)
+\end{equation}
+
+The probability of going Over $n.5$ goals is the probability that remaining goals plus current goals exceed $n.5$:
+\begin{equation}
+P(\text{Over } n.5) = P(\text{remaining goals} \geq \lceil n.5 \rceil - g)
+\end{equation}
+
+Using the Poisson CDF $F_{\text{Poisson}}(k; m) = P(X \leq k)$:
+\begin{equation}
+P(\text{Over } n.5) = 1 - F_{\text{Poisson}}(\lceil n.5 \rceil - g - 1; m) = f(m)
+\end{equation}
+
+\textbf{Calibration:} Given from real market data an observed market probability $P_{\text{over}}^{\text{market}}$, we seek $m = f^{-1}(P_{\text{over}}^{\text{market}})$.
+Since $f(m)$ has no closed-form inverse but is monotonically increasing in $m$, we use binary search until convergence.
+
+Note that the match minute does not enter the model explicitly. The market prices already encode the remaining time: as the match progresses, Over/Under probabilities naturally decrease, yielding lower $m$ values through calibration. The model delegates time modeling to the market.
+
+\subsubsection{Step 2: Goal Share from 1X2 Markets}
+
+Define $q = \lambda_H / m$ (home team's share of remaining goals).
+
+Given $m$ from Step 1:
+\begin{align}
+\lambda_H &= m \cdot q \\
+\lambda_A &= m \cdot (1 - q)
+\end{align}
+
+We find $q$ by minimizing the squared error between model and observed 1X2 probabilities:
+
+\begin{equation}
+q^* = \arg\min_q \sum_{i \in \{H, D, A\}} \left( P_i^{\text{model}}(q) - P_i^{\text{market}} \right)^2
+\end{equation}
+
+Define $L(q) = \sum_{i} (P_i^{\text{model}}(q) - P_i^{\text{market}})^2$ as the loss function. Given $m$ from Step 1, we compute $P_i^{\text{model}}(q)$ via the Skellam distribution with $\lambda_H = mq$ and $\lambda_A = m(1-q)$.
+
+Since $L(q)$ has no closed-form minimum, we use numerical optimization (e.g., Nelder-Mead) over $q \in [0, 1]$ to find $q^*$.
+
+%==============================================================================
+\section{Goal Impact Prediction}
+%==============================================================================
+
+\subsection{Computing New Probabilities}
+
+When a goal is scored, we:
+
+\begin{enumerate}
+    \item Update the goal difference: $d' = d \pm 1$
+    \item Keep $\lambda_H, \lambda_A$ unchanged (calibrated before the goal)
+    \item Recompute probabilities using the Skellam distribution with new $d'$
+\end{enumerate}
+
+\subsection{Example Calculation}
+
+Consider a match at 0-0 in the 30th minute with:
+\begin{itemize}
+    \item Market: $P(H) = 50\%$, $P(D) = 28\%$, $P(A) = 22\%$
+    \item Calibrated: $\lambda_H = 0.85$, $\lambda_A = 0.65$
+\end{itemize}
+
+If home scores (new score 1-0, $d' = 1$):
+\begin{align}
+P'(\text{Home Win}) &= P(\Delta > -1) = \sum_{k=0}^{\infty} P(\Delta = k) = \sum_{k=0}^{\infty} \sum_{j=0}^{\infty} P(X = j+k) \cdot P(Y = j) \approx 71\% \nonumber
+\end{align}
+
+where $\Delta \sim \text{Skellam}(\lambda_H, \lambda_A)$ is the random variable representing the home minus away goals yet to be scored. $X \sim \text{Poisson}(0.85)$ and $Y \sim \text{Poisson}(0.65)$. Similarly:
+\begin{align}
+P'(\text{Draw}) &= P(\Delta = -1) = \sum_{j=0}^{\infty} P(X = j) \cdot P(Y = j+1) \approx 19\% \\
+P'(\text{Away Win}) &= P(\Delta \leq -2) = 1 - P'(\text{Home}) - P'(\text{Draw}) \approx 10\%
+\end{align}
+
+The home win probability increases by approximately $+21\%$.
+
+
+%==============================================================================
+\section{Over/Under Markets}
+%==============================================================================
+
+\subsection{Over/Under Probability}
+
+For Over/Under $n.5$ goals, with current total $g$ and expected remaining goals $m = \lambda_H + \lambda_A$:
+\begin{equation}
+P(\text{Over } n.5) = 1 - F_{\text{Poisson}}(\lceil n.5 \rceil - g - 1; m)
+\end{equation}
+
+Using the same match state ($\lambda_H = 0.85$, $\lambda_A = 0.65$, so $m = 1.5$), at 0-0 ($g = 0$) for Over 2.5:
+
+\begin{align}
+P(\text{Over } 2.5) &= 1 - F_{\text{Poisson}}(2; 1.5) \approx 19\% \nonumber
+\end{align}
+
+After home scores ($g' = 1$), we now need only 2 more goals to exceed 2.5:
+
+\begin{align}
+P'(\text{Over } 2.5) &= 1 - F_{\text{Poisson}}(1; 1.5) \approx 44\% \nonumber
+\end{align}
+
+The Over 2.5 probability increases by $+25\%$ with the goal.
+
+%==============================================================================
+\section{Model Validation}
+%==============================================================================
+
+The model was validated on 20 goals across 12 matches in several football leagues:
+
+\begin{table}[H]
+\centering
+\begin{tabular}{@{}lc@{}}
+\toprule
+\textbf{Metric} & \textbf{Value} \\
+\midrule
+Mean Absolute Error & 4.9\% \\
+Median Absolute Error & 4.1\% \\
+Predictions within 5\% & 55\% \\
+Predictions within 10\% & 95\% \\
+\bottomrule
+\end{tabular}
+\caption{Validation results comparing predicted vs actual market probabilities}
+\end{table}
+
+\subsection{Visual Examples}
+\begin{figure}[H]
+\centering
+\includegraphics[width=\textwidth]{orderbook_2026-02-02_Udinese_Calcio_vs__AS_Roma_goal_49_notitle.png}
+\caption{Udinese vs Roma -- [H] 49' Ekkelenkamp (1-0). MAE: 3.8\%}
+\end{figure}
+
+\begin{figure}[H]
+\centering
+\includegraphics[width=\textwidth]{orderbook_2026-02-03_Bologna_FC_1909_vs__AC_Milan_goal_20_notitle.png}
+\caption{Bologna vs Milan -- [A] 20' Loftus-Cheek (0-1). MAE: 3.3\%}
+\end{figure}
+
+\begin{figure}[H]
+\centering
+\includegraphics[width=\textwidth]{orderbook_2026-02-03_FC_Universitatea_Cluj_vs__FC_Argeș_Pitești_goal_12_notitle.png}
+\caption{Universitatea Cluj vs FC Arges -- [H] 12' Macalou (1-0). MAE: 5.1\%}
+\end{figure}
+
+%==============================================================================
+\section{Limitations}
+%==============================================================================
+
+\begin{itemize}
+    \item \textbf{Independence assumption}: Goals are assumed independent, ignoring momentum effects
+    \item \textbf{Static rates}: $\lambda$ values don't change with match context (red cards, substitutions)
+    \item \textbf{Late-game accuracy}: Predictions less reliable when little time remains
+    \item \textbf{Market efficiency}: Assumes market prices reflect true probabilities
+\end{itemize}
+
+%==============================================================================
+\section{Conclusion}
+%==============================================================================
+
+The Poisson/Skellam model provides a principled statistical framework for predicting live football probabilities. The dual calibration approach -- using Over/Under markets to pin down total expected goals $m$, and 1X2  markets to split them into $\lambda_H$ and $\lambda_A$ -- resolves the underdetermined inverse problem without requiring historical data or match-specific priors, yielding accurate predictions.
+\end{document}
