@@ -18,10 +18,8 @@ predictor.update(
     ou_prices={2.5: 0.55, 3.5: 0.30}
 )
 
-summary = predictor.get_summary()
-print(f"Score: {summary['score']}  Minute: {summary['minute']}'")
-print(f"Calibrated: lambda_home={summary['lambda_home']}, lambda_away={summary['lambda_away']}")
-print(f"Method: {summary['calibration_method']}")
+print(f"Score: 0-0  Minute: 30'")
+print(f"Calibrated: lambda_home={predictor.lambda_home:.3f}, lambda_away={predictor.lambda_away:.3f}")
 
 # What happens if home scores?
 home_goal = predictor.predict_goal_impact(home_scores=True)

@@ -1,68 +1,64 @@
 # Live Football Odds Predictor
 
-Statistical model that predicts how football match probabilities change in real-time using Poisson/Skellam distributions.
+Statistical model that predicts how football match probabilities change in real-time when a goal is scored, using Poisson/Skellam distributions.
 
-## Overview
-
-During a live football match, the probability of each outcome (Home Win, Draw, Away Win) changes as goals are scored. This project implements a mathematical model to predict these probability shifts instantly using:
-
-- **Poisson distribution** for modeling goal-scoring rates
-- **Skellam distribution** for predicting match outcomes
-- **Dual calibration** from live betting market data (Over/Under + 1X2)
+Given live betting market data (1X2 and Over/Under prices), the model calibrates Poisson rates and computes what the new Home/Draw/Away probabilities should be after a goal — before the market has fully reacted.
 
 ## The Math
 
-The mathematical foundation is detailed in [`docs/model.pdf`](docs/model.pdf) (coming soon).
+The full mathematical derivation is in [`docs/model.pdf`](docs/model.pdf) ([LaTeX source](docs/model.tex)).
 
-**Key concepts:**
+Goals scored by each team follow independent Poisson processes. The difference of two Poisson variables follows a Skellam distribution, which we use to compute match outcome probabilities. We calibrate the Poisson rates from live market data using **dual calibration**:
 
-1. Goals scored by each team follow independent Poisson processes with rates λ_home and λ_away
-2. The difference of two Poisson variables follows a Skellam distribution
-3. We calibrate λ values from live market prices using a dual approach:
-   - **O/U prices → m** (total expected remaining goals)
-   - **1X2 prices → q** (home team's share of remaining goals)
-   - Combined: `λ_home = m × q`, `λ_away = m × (1-q)`
+- **Over/Under prices -> m**: Market-implied probability of Over X.5 goals (e.g., P(Over 2.5) = 55%) lets us solve for `m`, the total expected remaining goals
+- **1X2 prices -> q**: Match winner probabilities (Home/Draw/Away) let us solve for `q`, the home team's share of remaining goals
+- **Combined**: `lambda_home = m * q`, `lambda_away = m * (1-q)`
 
-## Validation Results
+## Quick Start
 
-Tested on **42 goals** across **13 matches** (Premier League + Champions League):
+```bash
+pip install -r requirements.txt
+py example.py        # run the model on a sample match
+py validate.py       # reproduce MAE on all 20 goals
+py validate.py 6     # view detailed prediction for goal #6
+py validate.py plot  # generate validation plots from orderbook data
+```
+
+## Validation
+
+Tested on **20 goals** across **10 matches** (Champions League, Serie A, La Liga, Liga 1 Romania, Saudi Pro League):
 
 | Metric | Value |
 |--------|-------|
-| Mean Absolute Error | **8.0%** |
-| Median Absolute Error | **6.0%** |
-| Predictions within 5% | 43% |
-| Predictions within 10% | **79%** |
+| Mean Absolute Error | **4.4%** |
+| Median Absolute Error | **3.6%** |
+| Predictions within 5% | 65% |
+| Predictions within 10% | **100%** |
 
-### Example: Inter vs Arsenal (UCL)
+### Example: Udinese vs Roma
 
-Gabriel Jesus scores for Arsenal in the 10th minute:
+Ekkelenkamp scores for Udinese in the 49th minute (1-0):
 
-![Inter vs Arsenal](validation/plots/inter_arsenal_goal_10.png)
+![Udinese vs Roma](validation/plots/orderbook_2026-02-02_Udinese_Calcio_vs__AS_Roma_goal_49_notitle.png)
 
-- **Colored lines**: Actual market probabilities
-- **Green dotted**: Model prediction (pre-goal)
-- **Purple dotted**: Locked prediction (post-goal)
-
-### Example: Real Madrid vs Monaco (UCL)
-
-Mbappé opens the scoring in the 5th minute:
-
-![Real Madrid vs Monaco](validation/plots/real_monaco_goal_5.png)
+- **Colored lines**: Actual market probabilities over time
+- **Green dotted**: Model prediction before the goal (what the model expects the market to jump to)
+- **Purple dotted**: Locked prediction after the goal (held constant to compare against where the market actually settled)
 
 ## Project Structure
 
 ```
+example.py              # Run the model on a sample match
+validate.py             # Reproduce MAE, view predictions, generate plots
 src/
-├── poisson_model.py    # Core probability calculations
-└── visualize.py        # Chart generation (dark mode)
-
+  poisson_model.py      # Core: Skellam, dual calibration, prediction
+  visualize.py          # Chart plotting
 validation/
-├── results.csv         # 42 goals with predictions vs actual
-└── plots/              # Example visualizations
-
+  results.csv           # 20 goals with market inputs and actuals
+  orderbooks/           # Minute-by-minute orderbook logs for validation matches
+  plots/                # Validation visualizations
 docs/
-└── model.pdf           # Mathematical derivation (LaTeX)
+  model.tex             # LaTeX paper with full derivation
 ```
 
 ## Usage
@@ -70,53 +66,23 @@ docs/
 ```python
 from src.poisson_model import FootballPredictor, Probabilities
 
-# Initialize predictor
 predictor = FootballPredictor()
-
-# Update with current match state
 predictor.update(
     minute=30,
     home_goals=0,
     away_goals=0,
     market_1x2=Probabilities(home_win=0.50, draw=0.28, away_win=0.22),
-    ou_prices={2.5: 0.55, 3.5: 0.30}  # Optional: improves accuracy
+    # Over/Under prices: {goal_line: P(over)}
+    # e.g. 55% chance of over 2.5 goals, 30% chance of over 3.5
+    ou_prices={2.5: 0.55, 3.5: 0.30}
 )
 
-# Predict what happens if home team scores
+# What happens if home scores next?
 impact = predictor.predict_goal_impact(home_scores=True)
-
 print(f"Home win: {impact.new_1x2.home_win:.1%} ({impact.delta_home_win:+.1%})")
-print(f"Draw:     {impact.new_1x2.draw:.1%} ({impact.delta_draw:+.1%})")
-print(f"Away win: {impact.new_1x2.away_win:.1%} ({impact.delta_away_win:+.1%})")
+# Home win: 75.4% (+25.4%)
 ```
-
-Output:
-```
-Home win: 73.2% (+23.2%)
-Draw:     18.1% (-9.9%)
-Away win: 8.7% (-13.3%)
-```
-
-## Requirements
-
-```
-numpy
-scipy
-matplotlib
-pandas
-```
-
-## Applications
-
-- Sports analytics and research
-- Understanding probability dynamics in football
-- Educational tool for Poisson processes
-- Benchmarking prediction models
 
 ## License
 
 MIT
-
----
-
-*Built for research and educational purposes.*

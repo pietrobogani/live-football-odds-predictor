@@ -18,8 +18,8 @@
 
 \title{Poisson Model for Live Football Probability Prediction}
 \author{Pietro Bogani\\[2pt]
-\small \href{https://www.linkedin.com/in/your-profile}{linkedin.com/in/your-profile} \quad $\cdot$ \quad
-\href{https://github.com/your-username/live-football-odds-predictor}{GitHub Repository}}
+\small \href{https://www.linkedin.com/in/pietro-bogani-b640a5205/}{linkedin.com/pietrobogani} \quad $\cdot$ \quad
+\href{https://github.com/pietrobogani/live-football-odds-predictor}{GitHub Repository}}
 \date{\today}
 
 \begin{document}
@@ -215,7 +215,7 @@ The Over 2.5 probability increases by $+25\%$ with the goal.
 \section{Model Validation}
 %==============================================================================
 
-The model was validated on 20 goals across 12 matches in several football leagues:
+The model was validated on 20 goals across 10 matches in several football leagues:
 
 \begin{table}[H]
 \centering
@@ -223,10 +223,10 @@ The model was validated on 20 goals across 12 matches in several football league
 \toprule
 \textbf{Metric} & \textbf{Value} \\
 \midrule
-Mean Absolute Error & 4.9\% \\
-Median Absolute Error & 4.1\% \\
-Predictions within 5\% & 55\% \\
-Predictions within 10\% & 95\% \\
+Mean Absolute Error & 4.4\% \\
+Median Absolute Error & 3.6\% \\
+Predictions within 5\% & 65\% \\
+Predictions within 10\% & 100\% \\
 \bottomrule
 \end{tabular}
 \caption{Validation results comparing predicted vs actual market probabilities}
@@ -236,19 +236,19 @@ Predictions within 10\% & 95\% \\
 \begin{figure}[H]
 \centering
 \includegraphics[width=\textwidth]{orderbook_2026-02-02_Udinese_Calcio_vs__AS_Roma_goal_49_notitle.png}
-\caption{Udinese vs Roma -- [H] 49' Ekkelenkamp (1-0). MAE: 3.8\%}
+\caption{Udinese vs Roma -- [H] 49' Ekkelenkamp (1-0). MAE: 3.3\%}
 \end{figure}
 
 \begin{figure}[H]
 \centering
 \includegraphics[width=\textwidth]{orderbook_2026-02-03_Bologna_FC_1909_vs__AC_Milan_goal_20_notitle.png}
-\caption{Bologna vs Milan -- [A] 20' Loftus-Cheek (0-1). MAE: 3.3\%}
+\caption{Bologna vs Milan -- [A] 20' Loftus-Cheek (0-1). MAE: 2.5\%}
 \end{figure}
 
 \begin{figure}[H]
 \centering
 \includegraphics[width=\textwidth]{orderbook_2026-02-03_FC_Universitatea_Cluj_vs__FC_Argeș_Pitești_goal_12_notitle.png}
-\caption{Universitatea Cluj vs FC Arges -- [H] 12' Macalou (1-0). MAE: 5.1\%}
+\caption{Universitatea Cluj vs FC Arges -- [H] 12' Macalou (1-0). MAE: 3.9\%}
 \end{figure}
 
 %==============================================================================
